@@ -1,0 +1,62 @@
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+.form-select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 1rem;
+  background: var(--code-bg);
+  color: var(--text-h);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-bg);
+}
+
+/* Login card specific overrides */
+.login-card .form-select {
+  background: white;
+  color: #495057;
+  border: 2px solid #dee2e6;
+}
+
+.login-card .form-select::placeholder {
+  color: #6c757d;
+  opacity: 1;
+}
+
+.login-card .form-select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(0, 119, 182, 0.25);
+}
+
+@media (prefers-color-scheme: dark) {
+  .login-card .form-select {
+    background: white;
+    color: #212529;
+    border: 2px solid #dee2e6;
+  }
+
+  .login-card .form-select::placeholder {
+    color: #6c757d;
+    opacity: 1;
+  }
+
+  .login-card .form-select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(77, 168, 218, 0.25);
+  }
+}

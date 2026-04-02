@@ -75,19 +75,49 @@ HRM/
 │
 ├── frontend/
 │   ├── src/
-│   │   ├── components/   # React components (to be created)
-│   │   ├── pages/        # Page components (to be created)
-│   │   ├── App.tsx       # Main App component
-│   │   └── main.tsx      # Entry point
-│   ├── public/           # Static assets
-│   ├── package.json      # npm dependencies & scripts
-│   ├── vite.config.js    # Vite configuration
-│   └── index.html        # HTML template
+│   │   ├── types/
+│   │   │   └── employee.ts              # Shared interfaces: PTOBalance, PTORequest, OTRequest
+│   │   ├── components/
+│   │   │   ├── form/                    # Shared form components (TextInput, SelectInput, etc.)
+│   │   │   ├── employees/               # Admin-side: employee management
+│   │   │   │   ├── EmployeeManagementView.tsx   # Container for employee CRUD
+│   │   │   │   ├── EmployeeTable.tsx            # Sortable employee table with actions
+│   │   │   │   ├── EmployeeDetailModal.tsx      # Employee detail + direct reports
+│   │   │   │   └── EmployeeFormModal.tsx        # Create/edit employee form
+│   │   │   └── employee/                # Employee-side: request management
+│   │   │       ├── EmployeeDashboard.tsx        # PTO/OT summary, calendar, popup
+│   │   │       ├── PersonalRequests.tsx         # PTO/OT toggle + request tables
+│   │   │       ├── EmployeesRequests.tsx        # Team requests + approve/reject
+│   │   │       ├── PTORequestForm.tsx           # New PTO request modal
+│   │   │       └── OTRequestForm.tsx            # New OT request modal
+│   │   ├── pages/
+│   │   │   ├── Login.tsx              # Login page with admin/employee user type
+│   │   │   ├── Home.tsx               # Admin view (dashboard + employee management)
+│   │   │   └── EmployeeHome.tsx       # Employee view (dashboard, personal, team requests)
+│   │   ├── App.tsx                     # Routes: /, /home, /employee/home
+│   │   └── main.tsx                    # Entry point
+│   ├── public/
+│   ├── package.json                    # npm deps (react, react-router-dom, date-fns)
+│   └── index.html
 │
-├── CLAUDE.md             # This file
-├── .gitignore            # Git ignore rules
-└── README.md             # Project documentation
+├── CLAUDE.md
+├── .gitignore
+└── README.md
 ```
+
+### Overall Project Structure
+- Root: `/c/Users/anhcu/Documents/HRM`
+- Frontend: `./frontend/` (React app, run commands here)
+- Backend: `./backend/` (Python Flask API, run commands here)
+
+## Working Directory Rules
+- Always run `npm install` / `npm run dev` from `./frontend/`
+- Always execute command of backend from `./backend/`
+- Never run build commands from the project root unless specified
+- When in doubt, confirm the target directory before executing
+
+## Building Rules
+- Before run a server (both backend and frontend), make sure the running port process terminated. To find PID with port number, use `netstat -ano | findstr :<Port number>`. If there is process running on that port, Then terminate the process using `taskkill /PID <PID> /F`. Then it's good to run the server.
 
 ## Common Development Tasks
 
@@ -106,6 +136,7 @@ HRM/
 2. Create pages in `frontend/src/pages/`
 3. Add routes in `frontend/src/App.jsx` if needed
 4. Import and use components as needed
+5. For each component, its own CSS style should be in separate style
 
 ### Environment Variables
 Create a `.env` file in the backend directory:
@@ -118,6 +149,49 @@ DATABASE_URL=sqlite:///app.db  # or other database URL
 - Backend: Use Python's unittest framework or pytest
 - Frontend: Use React Testing Library or Vitest
 - Run tests as needed based on project requirements
+
+## Completed Frontend Features
+
+### Authentication & Routing
+- Login page with user type selector (admin vs employee)
+- Route-by-type: admin → `/home`, employee → `/employee/home`
+- Logout button on both admin and employee views (clears localStorage, redirects to `/`)
+- User info stored in localStorage as `loggedInUser`
+
+### Admin View (`/home`)
+- Sidebar navigation: Dashboard | Employees
+- Dashboard: summary tiles (total employees, pending PTO, pending OT), recent activity, quick actions
+- Employee management with full CRUD (create, view, edit, delete):
+  - Sortable employee table with name, email, position, department, hire date
+  - Employee detail modal showing personal info, employment details, leave/OT balance, request history
+  - Employee form modal with validation (regex email, required fields)
+- Management chain UI:
+  - Employee can have a manager AND manage other employees (hierarchical)
+  - Employee detail modal shows manager name + "Managed Employees" section with direct reports
+  - Create/edit form "Reports To" dropdown excludes self, shows manager's position for disambiguation
+  - Clicking a direct report navigates to their detail view (chain navigation)
+- Mock data: 5 sample employees with management hierarchy (John Doe manages Sarah Wilson & David Brown; Jane Smith manages Mike Johnson)
+
+### Employee View (`/employee/home`)
+- Sidebar navigation: Dashboard | Personal Requests | Employees' Requests
+- **Dashboard tab**:
+  - 4 summary tiles: Total Annual PTO (15), Remaining PTO (11), Taken PTO (4), OT Hours (12)
+  - Submit PTO Request / Submit OT Request action buttons (open modals)
+  - Month calendar with prev/next navigation
+  - Blue circular markers for PTO days, amber for OT days
+  - Clickable calendar cells → popup showing PTO/OT request details (type, dates, days, reason, status)
+- **Personal Requests tab**:
+  - PTO/OT pill toggle switch
+  - PTO requests table: Type, Start, End, Days, Reason, Status badges (green/yellow/red)
+  - OT requests table: Date, Hours, Reason, Status
+  - "New PTO/OT Request" buttons → modal forms with validation
+  - PTO form: auto-computed weekday count (excludes weekends), date range validation
+  - OT form: hours validation (0.5–16), required fields
+- **Employees' Requests tab (manager view)**:
+  - PTO/OT pill toggle switch
+  - Tables of direct reports' pending requests with employee name
+  - Approve (green ✓) / Reject (red ✕) buttons — disabled after action taken
+  - Status updates reflected immediately in local state
 
 ## Verification
 ✓ Backend server running and responding to /health endpoint
@@ -132,3 +206,7 @@ DATABASE_URL=sqlite:///app.db  # or other database URL
 - Frontend is configured to proxy `/api` requests to backend for seamless development
 - Both servers support hot reloading during development
 - Initial database migrations have been applied (employees and departments tables created)
+- All data is currently mock data — backend API integration pending
+- Dependencies added: `date-fns` for calendar and date manipulation
+- Admin view is in `Home.tsx`; employee view is in `EmployeeHome.tsx`
+- Shared components split: `components/employees/` (admin) and `components/employee/` (user-facing)

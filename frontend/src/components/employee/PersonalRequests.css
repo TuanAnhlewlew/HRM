@@ -1,0 +1,127 @@
+.personal-requests {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.view-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.view-toggle button {
+  padding: 0.5rem 1.5rem;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.875rem;
+}
+
+.view-toggle button.active {
+  background: var(--accent);
+  color: white;
+}
+
+.view-toggle button:hover:not(.active) {
+  background: var(--accent-bg);
+}
+
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.list-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text-h);
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.request-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.75rem;
+}
+
+.request-table th {
+  background: var(--code-bg);
+  font-weight: 600;
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.8rem;
+  color: var(--text-h);
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+}
+
+.request-table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.request-table tbody tr:hover {
+  background: var(--accent-bg);
+}
+
+.reason-col {
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.2rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status-approved {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-rejected {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.empty-msg {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text);
+  opacity: 0.6;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 640px) {
+  .view-toggle {
+    width: 100%;
+  }
+
+  .view-toggle button {
+    flex: 1;
+  }
+}
