@@ -7,10 +7,9 @@ db = SQLAlchemy()
 migrate = Migrate()
 
 def create_app(config_class='config.Config'):
-    import os
     app = Flask(__name__)
     app.config.from_object(config_class)
-    CORS(app, origins=[os.environ.get('FRONTEND_URL', 'http://localhost:5173')])
+    CORS(app, origins=[app.config.get('FRONTEND_URL', 'http://localhost:5173')])
 
     db.init_app(app)
     migrate.init_app(app, db)
