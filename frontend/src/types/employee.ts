@@ -1,3 +1,5 @@
+export type LeaveType = 'Annual' | 'Maternity' | 'Paternity' | 'Sick' | 'Unpaid';
+
 export interface PTOBalance {
   totalAnnual: number;
   remaining: number;
@@ -6,7 +8,7 @@ export interface PTOBalance {
 
 export interface PTORequest {
   id: string;
-  type: 'PTO' | 'Sick' | 'Personal';
+  type: LeaveType;
   startDate: string;
   endDate: string;
   days: number;

@@ -27,7 +27,8 @@ const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
     job_title: '',
     department_id: '',
     manager_id: '',
-    salary: ''
+    salary: '',
+    gender: ''
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -46,7 +47,8 @@ const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
         job_title: employee.job_title || '',
         department_id: employee.department_id?.toString() || '',
         manager_id: employee.manager_id?.toString() || '',
-        salary: employee.salary?.toString() || ''
+        salary: employee.salary?.toString() || '',
+        gender: employee.gender || ''
       });
     }
   }, [mode, employee]);
@@ -112,8 +114,8 @@ const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
         // Prepare data for submission
         const submitData = {
           ...formData,
-          department_id: formData.department_id ? parseInt(formData.department_id, 10) : null,
-          manager_id: formData.manager_id ? parseInt(formData.manager_id, 10) : null,
+          department_id: formData.department_id || null,
+          manager_id: formData.manager_id || null,
           salary: formData.salary ? parseFloat(formData.salary) : null
         };
 
@@ -258,6 +260,21 @@ const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
               {errors.department_id && (
                 <span className="error-message">{errors.department_id}</span>
               )}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="gender">Gender *</label>
+              <select
+                id="gender"
+                name="gender"
+                value={formData.gender}
+                onChange={handleChange}
+                required
+              >
+                <option value="">Select gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </select>
             </div>
 
             <div className="form-group">

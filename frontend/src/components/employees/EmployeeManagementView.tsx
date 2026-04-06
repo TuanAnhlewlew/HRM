@@ -12,14 +12,14 @@ interface EmployeeManagementViewProps {
   formMode: 'create' | 'edit';
   departments: any[];
   managers: any[];
-  onViewEmployee: (employeeId: number) => void;
+  onViewEmployee: (employeeId: string) => void;
   onCreateEmployee: () => void;
-  onEditEmployee: (employeeId: number) => void;
+  onEditEmployee: (employeeId: string) => void;
   onFormSubmit: (employeeData: any) => void;
   onFormCancel: () => void;
-  onDeleteEmployee: (employeeId: number) => void;
+  onDeleteEmployee: (employeeId: string) => void;
   onCloseDetailModal: () => void;
-  onViewReport?: (employeeId: number) => void;
+  onViewReport?: (employeeId: string) => void;
 }
 
 const EmployeeManagementView: React.FC<EmployeeManagementViewProps> = ({

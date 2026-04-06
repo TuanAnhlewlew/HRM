@@ -1,57 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { api } from '../../api';
 import './EmployeeDetailModal.css';
 
 interface EmployeeDetailModalProps {
   employee: any;
   onClose: () => void;
-  onEdit: (employeeId: number) => void;
-  onViewReport?: (employeeId: number) => void;
+  onEdit: (employeeId: string) => void;
+  onViewReport?: (employeeId: string) => void;
 }
-
-// Mock data - will be replaced with API calls later
-const getLeaveBalance = (employeeId: number) => {
-  const mockData: Record<number, { totalPtoDays: number; usedPtoDays: number; balancePtoDays: number; loggedOtHours: number }> = {
-    1: { totalPtoDays: 15, usedPtoDays: 4, balancePtoDays: 11, loggedOtHours: 12 },
-    2: { totalPtoDays: 15, usedPtoDays: 8, balancePtoDays: 7, loggedOtHours: 6 },
-    3: { totalPtoDays: 12, usedPtoDays: 3, balancePtoDays: 9, loggedOtHours: 18 },
-    4: { totalPtoDays: 15, usedPtoDays: 5, balancePtoDays: 10, loggedOtHours: 24 },
-    5: { totalPtoDays: 10, usedPtoDays: 2, balancePtoDays: 8, loggedOtHours: 8 },
-  };
-  return mockData[employeeId] || { totalPtoDays: 15, usedPtoDays: 0, balancePtoDays: 15, loggedOtHours: 0 };
-};
-
-const getPTORequests = (employeeId: number) => {
-  const mockData: Record<number, Array<any>> = {
-    1: [
-      { id: 1, type: 'Annual Leave', startDate: '2024-01-15', endDate: '2024-01-17', days: 3, status: 'Approved' },
-      { id: 2, type: 'Sick Leave', startDate: '2024-03-05', endDate: '2024-03-05', days: 1, status: 'Approved' },
-      { id: 3, type: 'Personal Leave', startDate: '2024-06-20', endDate: '2024-06-21', days: 2, status: 'Pending' },
-    ],
-    2: [
-      { id: 4, type: 'Annual Leave', startDate: '2024-02-10', endDate: '2024-02-14', days: 5, status: 'Approved' },
-      { id: 5, type: 'Annual Leave', startDate: '2024-04-01', endDate: '2024-04-03', days: 3, status: 'Approved' },
-    ],
-  };
-  return mockData[employeeId] || [];
-};
-
-const getOTRequests = (employeeId: number) => {
-  const mockData: Record<number, Array<any>> = {
-    1: [
-      { id: 1, date: '2024-01-10', hours: 3, reason: 'Urgent deployment', status: 'Approved' },
-      { id: 2, date: '2024-02-15', hours: 2, reason: 'Production fix', status: 'Approved' },
-      { id: 3, date: '2024-03-20', hours: 4, reason: 'Weekend monitoring', status: 'Approved' },
-      { id: 4, date: '2024-04-05', hours: 3, reason: 'Release support', status: 'Pending' },
-    ],
-    3: [
-      { id: 5, date: '2024-01-20', hours: 4, reason: 'Design sprint', status: 'Approved' },
-      { id: 6, date: '2024-02-28', hours: 3, reason: 'Prototype review', status: 'Approved' },
-      { id: 7, date: '2024-03-15', hours: 5, reason: 'Client deadline', status: 'Approved' },
-      { id: 8, date: '2024-04-10', hours: 6, reason: 'Workshop prep', status: 'Pending' },
-    ],
-  };
-  return mockData[employeeId] || [];
-};
 
 const statusClass = (status: string) => {
   switch (status.toLowerCase()) {
@@ -133,15 +89,47 @@ const EmployeeDetailModal: React.FC<EmployeeDetailModalProps> = ({
 
   useEffect(() => {
     if (employee) {
-      // Simulate API call delay
       setLoading(true);
-      setTimeout(() => {
-        setBalance(getLeaveBalance(employee.id));
-        setPTORequests(getPTORequests(employee.id));
-        setOTRequests(getOTRequests(employee.id));
-        setDirectReports(employee.directReports || []);
+      Promise.all([
+        api(`/employees/${employee.id}`),
+        api(`/pto-requests`),
+        api(`/ot-requests`),
+      ]).then(([detail, ptoReqs, otReqs]) => {
+        setBalance({
+          totalPtoDays: 12,
+          usedPtoDays: ptoReqs.filter((r: any) => r.employee_id === employee.id && r.status === 'Approved').reduce((s: number, r: any) => s + r.days, 0),
+          balancePtoDays: 12 - ptoReqs.filter((r: any) => r.employee_id === employee.id && r.status === 'Approved').reduce((s: number, r: any) => s + r.days, 0),
+          loggedOtHours: otReqs.filter((r: any) => r.employee_id === employee.id && r.status === 'Approved').reduce((s: number, r: any) => s + r.hours, 0),
+        });
+        setPTORequests(
+          ptoReqs
+            .filter((r: any) => r.employee_id === employee.id)
+            .map((r: any) => ({
+              id: r.id,
+              type: r.request_type,
+              startDate: r.start_date,
+              endDate: r.end_date,
+              days: r.days,
+              status: r.status,
+            }))
+        );
+        setOTRequests(
+          otReqs
+            .filter((r: any) => r.employee_id === employee.id)
+            .map((r: any) => ({
+              id: r.id,
+              date: r.date,
+              hours: r.hours,
+              reason: r.reason,
+              status: r.status,
+            }))
+        );
+        setDirectReports(detail.direct_reports || []);
         setLoading(false);
-      }, 300);
+      }).catch((err) => {
+        console.error('Failed to load employee records:', err);
+        setLoading(false);
+      });
     }
   }, [employee]);
 
@@ -156,7 +144,7 @@ const EmployeeDetailModal: React.FC<EmployeeDetailModalProps> = ({
           <h2 className="modal-title">
             {employee.first_name} {employee.last_name}
           </h2>
-          <button className="modal-close" onClick={onClose}>
+          <button className="modal-close" onClick={(e) => { e.stopPropagation(); onClose(); }}>
             ✕
           </button>
         </div>
@@ -241,23 +229,20 @@ const EmployeeDetailModal: React.FC<EmployeeDetailModalProps> = ({
                         <td>
                           <span
                             className="report-name-link"
-                            onClick={() => onViewReport?.(rpt.id)}
+                            onClick={(e) => { e.stopPropagation(); onViewReport?.(rpt.id); }}
                           >
                             {rpt.first_name} {rpt.last_name}
                           </span>
                         </td>
                         <td>{rpt.job_title || '-'}</td>
                         <td>
-                          {rpt.department
-                            ? rpt.department.name
-                            : rpt.department_name
-                            || 'N/A'}
+                          {rpt.department_name || rpt.department?.name || 'N/A'}
                         </td>
                         <td>
                           <button
                             className="table-action-btn btn-view-action"
                             title="View Details"
-                            onClick={() => onViewReport?.(rpt.id)}
+                            onClick={(e) => { e.stopPropagation(); onViewReport?.(rpt.id); }}
                           >
                             👁️
                           </button>

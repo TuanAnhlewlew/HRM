@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { eachDayOfInterval, isBefore, startOfDay } from 'date-fns';
+import type { LeaveType } from '../../types/employee';
 import './PTORequestForm.css';
+
+const LEAVE_TYPES: LeaveType[] = ['Annual', 'Maternity', 'Paternity', 'Sick', 'Unpaid'];
 
 interface PTORequestFormProps {
   onClose: () => void;
   onSubmit: (request: {
-    type: 'PTO' | 'Sick' | 'Personal';
+    type: LeaveType;
     startDate: string;
     endDate: string;
     reason: string;
@@ -14,7 +17,7 @@ interface PTORequestFormProps {
 
 const PTORequestForm: React.FC<PTORequestFormProps> = ({ onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
-    type: 'PTO',
+    type: 'Annual' as LeaveType,
     startDate: '',
     endDate: '',
     reason: '',
@@ -59,7 +62,6 @@ const PTORequestForm: React.FC<PTORequestFormProps> = ({ onClose, onSubmit }) =>
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
-    await new Promise(r => setTimeout(r, 300));
     onSubmit(formData);
     setLoading(false);
   };
@@ -76,9 +78,9 @@ const PTORequestForm: React.FC<PTORequestFormProps> = ({ onClose, onSubmit }) =>
             <div className="form-group">
               <label htmlFor="pto-type">Type *</label>
               <select id="pto-type" name="type" value={formData.type} onChange={handleChange}>
-                <option value="PTO">PTO</option>
-                <option value="Sick">Sick</option>
-                <option value="Personal">Personal</option>
+                {LEAVE_TYPES.map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
               </select>
             </div>
 

@@ -1,18 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import './Home.css';
 import EmployeeManagementView from '../components/employees/EmployeeManagementView';
+import ChangePasswordModal from '../components/employee/ChangePasswordModal';
+import UserProfilePopup from '../components/form/UserProfilePopup';
+import { api } from '../api';
 
 const Home: React.FC = () => {
   const [showEmployeesView, setShowEmployeesView] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
   const [totalEmployees, setTotalEmployees] = useState(0);
   const [pendingPTO, setPendingPTO] = useState(0);
   const [pendingOT, setPendingOT] = useState(0);
-
-  // Mock data functions - will be replaced with API calls later
-  const getTotalEmployees = () => {
-    // Simulate API call delay
-    return Math.floor(Math.random() * 100) + 100; // Random between 100-200
-  };
+  const currentUser = JSON.parse(localStorage.getItem('loggedInUser') || 'null');
 
   // Employee management state
   const [employees, setEmployees] = useState<any[]>([]);
@@ -23,207 +22,73 @@ const Home: React.FC = () => {
   const [departments, setDepartments] = useState<any[]>([]);
   const [managers, setManagers] = useState<any[]>([]);
 
-  const getPendingPTORequests = () => {
-    // Simulate API call delay
-    return Math.floor(Math.random() * 20) + 5; // Random between 5-25
+  // Fetch dashboard statistics
+  const fetchDashboardStats = async () => {
+    try {
+      const [emps, ptoReqs, otReqs] = await Promise.all([
+        api('/employees'),
+        api('/pto-requests'),
+        api('/ot-requests'),
+      ]);
+      setTotalEmployees(emps.length);
+      setPendingPTO(ptoReqs.filter((r: any) => r.status === 'Pending').length);
+      setPendingOT(otReqs.filter((r: any) => r.status === 'Pending').length);
+    } catch (error) {
+      console.error('Failed to fetch dashboard stats:', error);
+    }
   };
 
-  const getPendingOTRequests = () => {
-    // Simulate API call delay
-    return Math.floor(Math.random() * 12) + 3; // Random between 3-15
-  };
-
-  // Simulate data fetching on component mount
-  useEffect(() => {
-    setTotalEmployees(getTotalEmployees());
-    setPendingPTO(getPendingPTORequests());
-    setPendingOT(getPendingOTRequests());
-  }, []);
-
-  // Employee management mock data functions - will be replaced with API calls later
-  const fetchEmployees = async () => {
+  // Full refresh employees (re-fetch from API)
+  const refreshEmployees = async () => {
     setLoading(true);
-    // Simulate API delay
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const mockEmployees = [
-          {
-            id: 1,
-            first_name: 'John',
-            last_name: 'Doe',
-            email: 'john.doe@company.com',
-            phone_number: '555-0101',
-            hire_date: '2023-01-15',
-            job_title: 'Software Engineer',
-            department_id: 1,
-            department: { id: 1, name: 'Engineering' },
-            salary: 75000,
-            manager_id: null,
-            manager_name: null
-          },
-          {
-            id: 2,
-            first_name: 'Jane',
-            last_name: 'Smith',
-            email: 'jane.smith@company.com',
-            phone_number: '555-0102',
-            hire_date: '2022-03-22',
-            job_title: 'Product Manager',
-            department_id: 2,
-            department: { id: 2, name: 'Product' },
-            salary: 82000,
-            manager_id: null,
-            manager_name: null
-          },
-          {
-            id: 3,
-            first_name: 'Mike',
-            last_name: 'Johnson',
-            email: 'mike.johnson@company.com',
-            phone_number: '555-0103',
-            hire_date: '2023-06-10',
-            job_title: 'UX Designer',
-            department_id: 3,
-            department: { id: 3, name: 'Design' },
-            salary: 68000,
-            manager_id: 2,
-            manager_name: 'Jane Smith'
-          },
-          {
-            id: 4,
-            first_name: 'Sarah',
-            last_name: 'Wilson',
-            email: 'sarah.wilson@company.com',
-            phone_number: '555-0104',
-            hire_date: '2021-11-05',
-            job_title: 'DevOps Engineer',
-            department_id: 1,
-            department: { id: 1, name: 'Engineering' },
-            salary: 78000,
-            manager_id: 1,
-            manager_name: 'John Doe'
-          },
-          {
-            id: 5,
-            first_name: 'David',
-            last_name: 'Brown',
-            email: 'david.brown@company.com',
-            phone_number: '555-0105',
-            hire_date: '2023-02-18',
-            job_title: 'QA Engineer',
-            department_id: 1,
-            department: { id: 1, name: 'Engineering' },
-            salary: 65000,
-            manager_id: 1,
-            manager_name: 'John Doe'
-          }
-        ];
-        resolve(mockEmployees);
-      }, 800);
-    });
+    try {
+      const [emps, depts] = await Promise.all([
+        api('/employees'),
+        api('/departments'),
+      ]);
+      setEmployees(emps);
+      setDepartments(depts);
+      setManagers(emps);
+    } catch (error) {
+      console.error('Failed to load data:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const fetchEmployeeById = async (id: number) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const employee = employees.find((emp: any) => emp.id === id);
-        if (!employee) {
-          resolve(null);
-          return;
-        }
-        const directReports = employees.filter((emp: any) => emp.manager_id === id);
-        resolve({
-          ...employee,
-          directReports
-        });
-      }, 400);
-    });
+  // CRUD operations via API
+  const createEmployeeViaApi = async (employeeData: any) => {
+    const newEmployee = await api('/employees', { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }, body: JSON.stringify(employeeData) });
+    setEmployees([...employees, newEmployee]);
+    return newEmployee;
   };
 
-  const fetchDepartments = async () => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const mockDepartments = [
-          { id: 1, name: 'Engineering' },
-          { id: 2, name: 'Product' },
-          { id: 3, name: 'Design' },
-          { id: 4, name: 'Marketing' },
-          { id: 5, name: 'Sales' },
-          { id: 6, name: 'HR' },
-          { id: 7, name: 'Finance' }
-        ];
-        resolve(mockDepartments);
-      }, 300);
-    });
+  const updateEmployeeViaApi = async (id: string, employeeData: any) => {
+    const updated = await api(`/employees/${id}`, { method: 'PUT', headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }, body: JSON.stringify(employeeData) });
+    setEmployees(employees.map((emp: any) => emp.id === id ? updated : emp));
+    return updated;
   };
 
-  const fetchManagers = async () => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve([...employees]); // All employees can be potential managers
-      }, 300);
-    });
+  const deleteEmployeeViaApi = async (id: string) => {
+    await api(`/employees/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+    setEmployees(employees.filter((emp: any) => emp.id !== id));
   };
 
-  const createEmployee = async (employeeData: any) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const newEmployee = {
-          id: Math.max(...employees.map((e: any) => e.id)) + 1,
-          ...employeeData
-        };
-        setEmployees([...employees, newEmployee]);
-        resolve(newEmployee);
-      }, 600);
-    });
-  };
-
-  const updateEmployee = async (id: number, employeeData: any) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        setEmployees(employees.map((emp: any) =>
-          emp.id === id ? { ...emp, ...employeeData } : emp
-        ));
-        resolve(employeeData);
-      }, 600);
-    });
-  };
-
-  const deleteEmployee = async (id: number) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        setEmployees(employees.filter((emp: any) => emp.id !== id));
-        resolve(id);
-      }, 400);
-    });
-  };
-
-  // Load initial employee data
+  // Fetch employee data when switching to Employees tab
   useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        const [emps, depts, mgrs] = await Promise.all([
-          fetchEmployees(),
-          fetchDepartments(),
-          fetchManagers()
-        ]) as [any[], any[], any[]];
-        setEmployees(emps);
-        setDepartments(depts);
-        setManagers(mgrs);
-      } catch (error) {
-        console.error('Failed to load initial data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (showEmployeesView) {
+      refreshEmployees();
+    }
+  }, [showEmployeesView]);
 
-    loadInitialData();
-  }, []);
-
-  // Handle opening detail modal
-  const handleViewEmployee = async (employeeId: number) => {
-    const employee = await fetchEmployeeById(employeeId);
-    setSelectedEmployee(employee);
+  // Handle opening detail modal — fetch from API if not already loaded
+  const handleViewEmployee = async (employeeId: string) => {
+    try {
+      const employee = await api(`/employees/${employeeId}`);
+      setSelectedEmployee(employee);
+    } catch (error) {
+      console.error('Failed to fetch employee:', error);
+    }
   };
 
   // Handle opening form modal
@@ -232,22 +97,32 @@ const Home: React.FC = () => {
     setShowFormModal(true);
   };
 
-  const handleEditEmployee = async (employeeId: number) => {
-    const employee = await fetchEmployeeById(employeeId);
-    setSelectedEmployee(employee);
-    setFormMode('edit');
-    setShowFormModal(true);
+  const handleEditEmployee = async (employeeId: string) => {
+    try {
+      const employee = await api(`/employees/${employeeId}`);
+      setSelectedEmployee(employee);
+      setFormMode('edit');
+      setShowFormModal(true);
+    } catch (error) {
+      console.error('Failed to fetch employee:', error);
+    }
   };
 
-  // Handle form submission
+  // Handle form submission — refresh dashboard stats after create/update/delete
   const handleFormSubmit = async (employeeData: any) => {
-    if (formMode === 'create') {
-      await createEmployee(employeeData);
-    } else if (formMode === 'edit' && selectedEmployee) {
-      await updateEmployee(selectedEmployee.id, employeeData);
+    try {
+      if (formMode === 'create') {
+        await createEmployeeViaApi(employeeData);
+      } else if (formMode === 'edit' && selectedEmployee) {
+        await updateEmployeeViaApi(selectedEmployee.id, employeeData);
+      }
+      await Promise.all([fetchDashboardStats(), refreshEmployees()]);
+    } catch (error) {
+      console.error('Failed to save employee:', error);
+    } finally {
+      setShowFormModal(false);
+      setSelectedEmployee(null);
     }
-    setShowFormModal(false);
-    setSelectedEmployee(null);
   };
 
   // Handle form cancellation
@@ -257,15 +132,21 @@ const Home: React.FC = () => {
   };
 
   // Handle delete employee
-  const handleDeleteEmployee = async (employeeId: number) => {
+  const handleDeleteEmployee = async (employeeId: string) => {
     if (window.confirm('Are you sure you want to delete this employee?')) {
-      await deleteEmployee(employeeId);
+      try {
+        await deleteEmployeeViaApi(employeeId);
+        await fetchDashboardStats();
+      } catch (error) {
+        console.error('Failed to delete employee:', error);
+      }
     }
   };
 
   // Handle logout
   const handleLogout = () => {
     localStorage.removeItem('loggedInUser');
+    localStorage.removeItem('token');
     window.location.href = '/';
   };
 
@@ -284,10 +165,14 @@ const Home: React.FC = () => {
             <button onClick={handleLogout} className="btn-icon" title="Logout">
               Logout
             </button>
-            <div className="user-profile">
-              <span className="user-initials">JD</span>
-              <span className="user-name">John Doe</span>
-            </div>
+            <UserProfilePopup user={currentUser} onChangePassword={() => {
+              setShowChangePassword(true);
+            }} />
+            {showChangePassword && (
+              <ChangePasswordModal
+                onClose={() => setShowChangePassword(false)}
+              />
+            )}
           </div>
         </div>
       </header>

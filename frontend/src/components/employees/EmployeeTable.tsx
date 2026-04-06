@@ -3,9 +3,9 @@ import './EmployeeTable.css';
 
 interface EmployeeTableProps {
   employees: Array<any>;
-  onViewEmployee: (employeeId: number) => void;
-  onEditEmployee: (employeeId: number) => void;
-  onDeleteEmployee: (employeeId: number) => void;
+  onViewEmployee: (employeeId: string) => void;
+  onEditEmployee: (employeeId: string) => void;
+  onDeleteEmployee: (employeeId: string) => void;
 }
 
 const EmployeeTable: React.FC<EmployeeTableProps> = ({

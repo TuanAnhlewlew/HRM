@@ -1,13 +1,38 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './Home.css';
 import EmployeeDashboard from '../components/employee/EmployeeDashboard';
 import PersonalRequests from '../components/employee/PersonalRequests';
 import EmployeesRequests from '../components/employee/EmployeesRequests';
 import PTORequestForm from '../components/employee/PTORequestForm';
 import OTRequestForm from '../components/employee/OTRequestForm';
-import type { PTOBalance, PTORequest, OTRequest } from '../types/employee';
+import EmployeeProfileModal from '../components/employee/EmployeeProfileModal';
+import ChangePasswordModal from '../components/employee/ChangePasswordModal';
+import UserProfilePopup from '../components/form/UserProfilePopup';
+import { api } from '../api';
+import type { PTOBalance, PTORequest, OTRequest, LeaveType } from '../types/employee';
 
 type Tab = 'dashboard' | 'personal' | 'employee-requests';
+
+// Map backend response to frontend interfaces
+const mapPTO = (r: any): PTORequest => ({
+  id: String(r.id),
+  type: r.request_type as LeaveType,
+  startDate: r.start_date,
+  endDate: r.end_date,
+  days: r.days,
+  reason: r.reason,
+  status: r.status,
+  employeeName: r.employee_name,
+});
+
+const mapOT = (r: any): OTRequest => ({
+  id: String(r.id),
+  date: r.date,
+  hours: r.hours,
+  reason: r.reason,
+  status: r.status,
+  employeeName: r.employee_name,
+});
 
 const EmployeeHome: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
@@ -19,98 +44,156 @@ const EmployeeHome: React.FC = () => {
   // Modal visibility
   const [showPTOForm, setShowPTOForm] = useState(false);
   const [showOTForm, setShowOTForm] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   // PTO balance
-  const [ptoBalance] = useState<PTOBalance>({
-    totalAnnual: 15,
-    remaining: 11,
-    taken: 4,
+  const [ptoBalance, setPtoBalance] = useState<PTOBalance>({
+    totalAnnual: 0,
+    remaining: 0,
+    taken: 0,
   });
 
   // OT hours
-  const [otHours] = useState(12);
+  const [otHours, setOtHours] = useState(0);
 
   // Personal PTO requests
-  const [personalPTORequests, setPersonalPTORequests] = useState<PTORequest[]>([
-    { id: 'pto-1', type: 'PTO', startDate: '2026-03-15', endDate: '2026-03-17', days: 3, reason: 'Family vacation', status: 'Approved' },
-    { id: 'pto-2', type: 'Sick', startDate: '2026-04-01', endDate: '2026-04-01', days: 1, reason: 'Doctor appointment', status: 'Approved' },
-    { id: 'pto-3', type: 'PTO', startDate: '2026-05-20', endDate: '2026-05-22', days: 3, reason: 'Spring break travel', status: 'Pending' },
-  ]);
+  const [personalPTORequests, setPersonalPTORequests] = useState<PTORequest[]>([]);
 
   // Personal OT requests
-  const [personalOTRequests, setPersonalOTRequests] = useState<OTRequest[]>([
-    { id: 'ot-1', date: '2026-03-20', hours: 3, reason: 'Weekend deployment support', status: 'Approved' },
-    { id: 'ot-2', date: '2026-04-10', hours: 2, reason: 'Production bug fix', status: 'Pending' },
-  ]);
+  const [personalOTRequests, setPersonalOTRequests] = useState<OTRequest[]>([]);
 
   // Direct reports' PTO requests (manager view)
-  const [directReportsPTORequests, setDirectReportsPTORequests] = useState<PTORequest[]>([
-    { id: 'dr-pt-1', type: 'PTO', startDate: '2026-04-15', endDate: '2026-04-18', days: 4, reason: 'Wedding', status: 'Pending', employeeName: 'Mike Johnson' },
-    { id: 'dr-pt-2', type: 'Sick', startDate: '2026-04-02', endDate: '2026-04-02', days: 1, reason: 'Flu', status: 'Pending', employeeName: 'Sarah Wilson' },
-  ]);
+  const [directReportsPTORequests, setDirectReportsPTORequests] = useState<PTORequest[]>([]);
 
   // Direct reports' OT requests
-  const [directReportsOTRequests, setDirectReportsOTRequests] = useState<OTRequest[]>([
-    { id: 'dr-ot-1', date: '2026-04-08', hours: 4, reason: 'Weekend migration', status: 'Pending', employeeName: 'Mike Johnson' },
-  ]);
+  const [directReportsOTRequests, setDirectReportsOTRequests] = useState<OTRequest[]>([]);
+
+  // Fetch all data
+  const fetchData = useCallback(async () => {
+    const user = localStorage.getItem('loggedInUser');
+    let employeeId: number | undefined;
+    if (user) {
+      employeeId = JSON.parse(user).id;
+    }
+    try {
+      const [balanceRes, ptoRes, otRes] = await Promise.all([
+        api('/me/balance').catch(() => ({ total_annual: 0, remaining: 0, taken: 0, pending: 0, ot_hours: 0 })),
+        api('/pto-requests').catch(() => []),
+        api('/ot-requests').catch(() => []),
+      ]);
+
+      setPtoBalance({
+        totalAnnual: balanceRes.total_annual,
+        remaining: balanceRes.remaining,
+        taken: balanceRes.taken,
+      });
+      setOtHours(balanceRes.ot_hours);
+
+      // Personal requests: only my own
+      const myPto = ptoRes
+        .filter((r: any) => r.employee_id === employeeId)
+        .map((r: any) => mapPTO(r));
+      setPersonalPTORequests(myPto);
+
+      const myOt = otRes
+        .filter((r: any) => r.employee_id === employeeId)
+        .map(mapOT);
+      setPersonalOTRequests(myOt);
+
+      // Manager view: direct reports' requests (exclude own)
+      const managerPto = ptoRes
+        .filter((r: any) => r.employee_id !== employeeId)
+        .map((r: any) => mapPTO(r));
+      setDirectReportsPTORequests(managerPto);
+
+      const managerOt = otRes
+        .filter((r: any) => r.employee_id !== employeeId)
+        .map(mapOT);
+      setDirectReportsOTRequests(managerOt);
+    } catch (err) {
+      console.error('Failed to fetch data:', err);
+    }
+  }, []);
 
   useEffect(() => {
     const stored = localStorage.getItem('loggedInUser');
     if (stored) {
       setUserInfo(JSON.parse(stored));
     }
-  }, []);
+    fetchData();
+  }, [fetchData]);
 
   const handleLogout = () => {
     localStorage.removeItem('loggedInUser');
+    localStorage.removeItem('token');
     window.location.href = '/';
   };
 
-  const getInitials = (name: string) =>
-    name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || 'E';
-
   // Submit handlers
-  const handleSubmitPTORequest = (data: {
-    type: 'PTO' | 'Sick' | 'Personal';
+  const handleSubmitPTORequest = async (data: {
+    type: LeaveType;
     startDate: string;
     endDate: string;
     reason: string;
   }) => {
-    const start = new Date(data.startDate);
-    const end = new Date(data.endDate);
-    const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-
-    const newRequest: PTORequest = {
-      ...data,
-      id: `pto-${Date.now()}`,
-      days,
-      status: 'Pending',
-    };
-    setPersonalPTORequests(prev => [newRequest, ...prev]);
-    setShowPTOForm(false);
+    try {
+      await api('/pto-requests', {
+        method: 'POST',
+        body: JSON.stringify({
+          start_date: data.startDate,
+          end_date: data.endDate,
+          reason: data.reason,
+          request_type: data.type,
+        }),
+      });
+      await fetchData();
+      setShowPTOForm(false);
+    } catch (err: any) {
+      alert(err.message || 'Failed to submit PTO request');
+    }
   };
 
-  const handleSubmitOTRequest = (data: { date: string; hours: number; reason: string }) => {
-    const newRequest: OTRequest = {
-      ...data,
-      id: `ot-${Date.now()}`,
-      status: 'Pending',
-    };
-    setPersonalOTRequests(prev => [newRequest, ...prev]);
-    setShowOTForm(false);
+  const handleSubmitOTRequest = async (data: { date: string; hours: number; reason: string }) => {
+    try {
+      await api('/ot-requests', {
+        method: 'POST',
+        body: JSON.stringify({
+          date: data.date,
+          hours: data.hours,
+          reason: data.reason,
+        }),
+      });
+      await fetchData();
+      setShowOTForm(false);
+    } catch (err: any) {
+      alert(err.message || 'Failed to submit OT request');
+    }
   };
 
   // Approve / Reject handlers
-  const handleUpdatePTOStatus = (requestId: string, status: 'Approved' | 'Rejected') => {
-    setDirectReportsPTORequests(prev =>
-      prev.map(r => r.id === requestId ? { ...r, status } : r)
-    );
+  const handleUpdatePTOStatus = async (requestId: string, status: 'Approved' | 'Rejected') => {
+    const endpoint = status === 'Approved' ? 'approve' : 'reject';
+    try {
+      await api(`/pto-requests/${requestId}/${endpoint}`, { method: 'PUT' });
+      setDirectReportsPTORequests(prev =>
+        prev.map(r => r.id === requestId ? { ...r, status } : r)
+      );
+    } catch (err: any) {
+      alert(err.message || 'Failed to update request');
+    }
   };
 
-  const handleUpdateOTStatus = (requestId: string, status: 'Approved' | 'Rejected') => {
-    setDirectReportsOTRequests(prev =>
-      prev.map(r => r.id === requestId ? { ...r, status } : r)
-    );
+  const handleUpdateOTStatus = async (requestId: string, status: 'Approved' | 'Rejected') => {
+    const endpoint = status === 'Approved' ? 'approve' : 'reject';
+    try {
+      await api(`/ot-requests/${requestId}/${endpoint}`, { method: 'PUT' });
+      setDirectReportsOTRequests(prev =>
+        prev.map(r => r.id === requestId ? { ...r, status } : r)
+      );
+    } catch (err: any) {
+      alert(err.message || 'Failed to update request');
+    }
   };
 
   return (
@@ -128,10 +211,11 @@ const EmployeeHome: React.FC = () => {
             <button onClick={handleLogout} className="btn-icon" title="Logout">
               Logout
             </button>
-            <div className="user-profile">
-              <span className="user-initials">{getInitials(userInfo.username)}</span>
-              <span className="user-name">{userInfo.username}</span>
-            </div>
+            <UserProfilePopup user={userInfo} onEmployeeDetails={() => {
+              setShowProfileModal(true);
+            }} onChangePassword={() => {
+              setShowChangePassword(true);
+            }} />
           </div>
         </div>
       </header>
@@ -210,6 +294,16 @@ const EmployeeHome: React.FC = () => {
         <OTRequestForm
           onClose={() => setShowOTForm(false)}
           onSubmit={handleSubmitOTRequest}
+        />
+      )}
+      {showProfileModal && (
+        <EmployeeProfileModal
+          onClose={() => setShowProfileModal(false)}
+        />
+      )}
+      {showChangePassword && (
+        <ChangePasswordModal
+          onClose={() => setShowChangePassword(false)}
         />
       )}
     </div>

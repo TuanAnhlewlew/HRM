@@ -63,6 +63,7 @@
 }
 
 .user-initials {
+  align-self: center;
   background-color: var(--accent);
   color: white;
   width: 24px;
