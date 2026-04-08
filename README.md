@@ -36,6 +36,9 @@ cd HRM
 
 # seed database for first database initialization
 python ./backend/seed.py
+
+# start backend
+./backend/start
 ```
 
 #### Admin account
@@ -55,6 +58,9 @@ NOTE: there is a change password after login
 ```bash
 # run frontend setup
 ./frontend/setup
+
+# start frontend
+./frontend/start
 ```
 
 The frontend will be available at http://localhost:5173
