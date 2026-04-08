@@ -33,12 +33,28 @@ cd HRM
 
 # Set up environment variables (create .env file)
 # SECRET_KEY=your-secret-key
+
+# seed database for first database initialization
+python ./backend/seed.py
 ```
+
+#### Admin account
+```
+username: admin
+password: admin123
+```
+#### Employee account
+```
+username: <employee's email>
+password: password123
+```
+NOTE: there is a change password after login
+
 
 ### Frontend Setup
 ```bash
 # run frontend setup
-./backend/setup
+./frontend/setup
 ```
 
 The frontend will be available at http://localhost:5173
